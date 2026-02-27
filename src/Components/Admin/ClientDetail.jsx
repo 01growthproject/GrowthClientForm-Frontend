@@ -57,63 +57,99 @@ const ClientDetail = () => {
     try {
       toast.info("📄 Generating comprehensive PDF...");
       const doc = new jsPDF("p", "mm", "a4");
+      // A4 = 210mm x 297mm
       let currentPage = 1;
 
-      const addImageToPDF = async (imageUrl, x, y, width, height) => {
+      // ✅ Aspect-ratio-safe image adder
+      const addImageToPDF = async (imageUrl, x, y, maxW, maxH) => {
         try {
-          const response = await fetch(imageUrl, { mode: 'cors' });
+          const response = await fetch(imageUrl, { mode: "cors" });
           const blob = await response.blob();
+
           return new Promise((resolve) => {
             const reader = new FileReader();
             reader.onloadend = () => {
               try {
-                doc.addImage(reader.result, "JPEG", x, y, width, height);
-                resolve(true);
+                const base64 = reader.result;
+                const img = new Image();
+                img.onload = () => {
+                  const naturalW = img.naturalWidth;
+                  const naturalH = img.naturalHeight;
+
+                  // Fit inside maxW x maxH while keeping aspect ratio
+                  const ratio = Math.min(maxW / naturalW, maxH / naturalH);
+                  const fitW = naturalW * ratio;
+                  const fitH = naturalH * ratio;
+
+                  // Center inside the box
+                  const offsetX = x + (maxW - fitW) / 2;
+                  const offsetY = y + (maxH - fitH) / 2;
+
+                  doc.addImage(base64, "JPEG", offsetX, offsetY, fitW, fitH);
+                  resolve({ success: true, fitW, fitH });
+                };
+                img.onerror = () => resolve({ success: false });
+                img.src = base64;
               } catch (err) {
-                console.error("Error adding image:", err);
-                resolve(false);
+                resolve({ success: false });
               }
             };
-            reader.onerror = () => resolve(false);
+            reader.onerror = () => resolve({ success: false });
             reader.readAsDataURL(blob);
           });
         } catch (err) {
-          console.error("Error fetching image:", err);
-          return false;
+          return { success: false };
         }
       };
 
-      // PAGE 1: HEADER & BASIC INFO
+      // ─────────────────────────────────────────
+      // PAGE 1: HEADER
+      // ─────────────────────────────────────────
       doc.setFillColor(102, 126, 234);
       doc.rect(0, 0, 210, 30, "F");
-
       doc.setFontSize(22);
       doc.setTextColor(255, 255, 255);
       doc.setFont("helvetica", "bold");
       doc.text("CLIENT INFORMATION FORM", 105, 20, { align: "center" });
 
-      // Passport Photo
-      const photoX = 155;
-      const photoY = 60;
-      const photoWidth = 40;
-      const photoHeight = 50;
+      // ─────────────────────────────────────────
+      // ✅ PASSPORT PHOTO — Standard size: 35mm × 45mm
+      // Placed top-right of page 1
+      // ─────────────────────────────────────────
+      const photoW = 35;   // mm — standard passport width
+      const photoH = 45;   // mm — standard passport height
+      const photoX = 165;  // right side (210 - 35 - 10 margin)
+      const photoY = 55;
 
       if (client.photo) {
-        await addImageToPDF(client.photo, photoX, photoY, photoWidth, photoHeight);
+        await addImageToPDF(client.photo, photoX, photoY, photoW, photoH);
         doc.setDrawColor(102, 126, 234);
         doc.setLineWidth(1);
-        doc.rect(photoX - 1, photoY - 1, photoWidth + 2, photoHeight + 2);
+        doc.rect(photoX, photoY, photoW, photoH); // exact border around passport box
       } else {
+        doc.setFillColor(240, 240, 240);
+        doc.rect(photoX, photoY, photoW, photoH, "F");
         doc.setDrawColor(148, 163, 184);
-        doc.rect(photoX, photoY, photoWidth, photoHeight);
-        doc.setFontSize(9);
+        doc.rect(photoX, photoY, photoW, photoH);
+        doc.setFontSize(8);
         doc.setTextColor(148, 163, 184);
-        doc.text("No Photo", photoX + 10, photoY + 25);
+        doc.text("No Photo", photoX + photoW / 2, photoY + photoH / 2, { align: "center" });
       }
 
-      let y = 45;
+      // Passport photo label
+      doc.setFontSize(7);
+      doc.setTextColor(100, 116, 139);
+      doc.setFont("helvetica", "normal");
+      doc.text("Passport Photo", photoX + photoW / 2, photoY + photoH + 4, { align: "center" });
+      doc.text("(35×45 mm)", photoX + photoW / 2, photoY + photoH + 8, { align: "center" });
+
+      // ─────────────────────────────────────────
+      // TEXT ROWS (stay left of photo)
+      // ─────────────────────────────────────────
+      let y = 38;
       const labelX = 15;
       const valueX = 70;
+      const textMaxWidth = 85; // keep text away from photo
 
       const addRow = (label, value) => {
         if (y > 270) {
@@ -129,7 +165,7 @@ const ClientDetail = () => {
         doc.setFontSize(10);
         doc.setTextColor(30, 41, 59);
         doc.setFont("helvetica", "bold");
-        const lines = doc.splitTextToSize(value || "N/A", 75);
+        const lines = doc.splitTextToSize(value || "N/A", textMaxWidth);
         doc.text(lines, valueX, y);
         y += 7 * lines.length;
       };
@@ -140,50 +176,45 @@ const ClientDetail = () => {
           currentPage++;
           y = 20;
         }
-        y += 5;
-        doc.setFontSize(13);
+        y += 4;
+        doc.setFontSize(12);
         doc.setTextColor(102, 126, 234);
         doc.setFont("helvetica", "bold");
         doc.text(title, 15, y);
         doc.setDrawColor(102, 126, 234);
-        doc.setLineWidth(0.5);
+        doc.setLineWidth(0.4);
         doc.line(15, y + 2, 195, y + 2);
         y += 8;
       };
 
-      // BASIC INFORMATION
       addSection("BASIC INFORMATION");
       addRow("Client Name:", client.clientName || "N/A");
       addRow("Surname:", client.surname || "N/A");
       addRow("Contact:", client.contact || "N/A");
       addRow("Email:", client.email || "N/A");
       addRow("Gender:", client.gender || "N/A");
-      addRow("Date of Birth:", client.dob ? new Date(client.dob).toLocaleDateString('en-IN') : "N/A");
+      addRow("Date of Birth:", client.dob ? new Date(client.dob).toLocaleDateString("en-IN") : "N/A");
       addRow("Age:", client.age?.toString() || "N/A");
+      addRow("Country:", client.country || "N/A");
       addRow("Nationality:", client.nationality || "N/A");
       addRow("Marital Status:", client.maritalStatus || "N/A");
       addRow("Education:", client.education || "N/A");
       addRow("Occupation:", client.occupation || "N/A");
+      addRow("Applied For:", client.appliedFor || "N/A");
+      addRow("Pre Work Experience:", client.preWorkExperience || "N/A");
+      addRow("Consular Name:", client.consularName || "N/A");
       addRow("Family Members:", client.familyMembersCount?.toString() || "0");
+      if (client.address) addRow("Address:", client.address);
 
-      if (client.address) {
-        addRow("Address:", client.address);
-      }
-
-      // ✅ GOVERNMENT SERVANT INFORMATION
       addSection("GOVERNMENT SERVANT INFORMATION");
       addRow("Family Member in Govt Service:", client.hasGovtServant || "N/A");
-
       if (client.hasGovtServant === "Yes") {
         addRow("Relation:", client.govtServantRelation || "N/A");
         addRow("Name:", client.govtServantName || "N/A");
         addRow("Work Type:", client.govtServantWorkType || "N/A");
         addRow("Designation:", client.govtServantDesignation || "N/A");
-        // addRow("Department:", client.govtServantDepartment || "N/A");
       }
 
-
-      // DOCUMENT NUMBERS
       addSection("DOCUMENT NUMBERS");
       addRow("Aadhaar Card No:", client.aadhaarCardNo || "N/A");
       addRow("PAN Card No:", client.panCardNo || "N/A");
@@ -195,157 +226,190 @@ const ClientDetail = () => {
       currentPage++;
       y = 20;
 
-
-      // FAMILY DETAILS - FATHER
       addSection("FATHER DETAILS");
-      addRow("Father Name:", `${client.fatherName || ""} ${client.fatherSurname || ""}`);
+      addRow("Father Name:", `${client.fatherName || ""} ${client.fatherSurname || ""}`.trim());
       addRow("Father Phone:", client.fatherPhone || "N/A");
       addRow("Father Email:", client.fatherEmail || "N/A");
 
-      // FAMILY DETAILS - MOTHER
       addSection("MOTHER DETAILS");
-      addRow("Mother Name:", `${client.motherName || ""} ${client.motherSurname || ""}`);
+      addRow("Mother Name:", `${client.motherName || ""} ${client.motherSurname || ""}`.trim());
       addRow("Mother Phone:", client.motherPhone || "N/A");
       addRow("Mother Email:", client.motherEmail || "N/A");
 
-      // SPOUSE DETAILS
       if (client.maritalStatus === "Married") {
         addSection("SPOUSE DETAILS");
-        addRow("Spouse Name:", `${client.spouseName || ""} ${client.spouseSurname || ""}`);
+        addRow("Spouse Name:", `${client.spouseName || ""} ${client.spouseSurname || ""}`.trim());
         addRow("Spouse Phone:", client.spousePhone || "N/A");
         addRow("Spouse Email:", client.spouseEmail || "N/A");
       }
 
-      // CAPTURED DOCUMENTS (Multi-Page)
+      // ─────────────────────────────────────────
+      // ✅ DOCUMENT PAGES
+      // Real-world card sizes (in mm):
+      //   Credit/ID card (Aadhaar, PAN, Voter, DL): 85.6 × 54  → ratio 1.585
+      //   Passport inner page:                       125 × 88   → ratio 1.42
+      //   A4 Marksheet / CV:                         210 × 297  → portrait, fit full page
+      //
+      // On A4 (210mm wide, usable ~180mm):
+      //   2-per-page: each card max 174mm × 110mm  (landscape orientation on page)
+      //   1-per-page: card max 174mm × 130mm
+      // ─────────────────────────────────────────
       if (client.documents && client.documents.length > 0) {
+
+        // ✅ Document groups with their real aspect ratios & layout
         const documentGroups = [
           {
             title: "Aadhaar Card",
             types: ["AadhaarFront", "AadhaarBack"],
-            perPage: 2
+            perPage: 2,
+            // Standard ID card: 85.6×54mm → scale to fit 174×100mm box
+            maxW: 174, maxH: 100,
           },
           {
             title: "PAN Card",
             types: ["PANCard"],
-            perPage: 1
+            perPage: 1,
+            // PAN = landscape ID card, give it more height for 1-per-page
+            maxW: 174, maxH: 120,
           },
           {
             title: "Passport",
             types: ["PassportFront", "PassportBack"],
-            perPage: 2
+            perPage: 2,
+            // Passport page ~125×88mm → slightly taller ratio
+            maxW: 174, maxH: 110,
           },
           {
             title: "Driving License",
             types: ["DrivingLicenseFront", "DrivingLicenseBack"],
-            perPage: 2
+            perPage: 2,
+            // DL = ID card size
+            maxW: 174, maxH: 100,
           },
           {
             title: "Voter Card",
             types: ["VoterCardFront", "VoterCardBack"],
-            perPage: 2
+            perPage: 2,
+            // Voter card = ID card size (as in your photo)
+            maxW: 174, maxH: 100,
           },
           {
             title: "Marksheet",
             types: ["MarksheetFront", "MarksheetBack"],
-            perPage: 2
+            perPage: 2,
+            // Marksheet = A4 portrait → tall box
+            maxW: 174, maxH: 115,
           },
           {
             title: "CV / Resume",
             types: ["CVPage1", "CVPage2"],
-            perPage: 2
-          }
+            perPage: 2,
+            // CV = A4 portrait → tall box
+            maxW: 174, maxH: 115,
+          },
         ];
 
-        const cardX = 18;
-        const cardWidth = 174;
-        const imageWidth = 170;
-        const imageHeight = 94;
-        const titleYSlots = [38, 168];
-        const singleDocTitleY = 90;
-        const singleDocImageY = 100;
+        const pageMarginX = 18;  // left margin
+        const cardBorderW = 174; // full usable width
 
-        const toReadableDocTitle = (value) => {
-          if (!value) return "Document";
-          return value
-            .replace(/([a-z])([A-Z])/g, "$1 $2")
-            .replace(/([A-Z])([A-Z][a-z])/g, "$1 $2")
-            .trim();
-        };
+        // ✅ Y-slot positions for 2-per-page layout
+        // Page header ends at ~24mm, so:
+        //   Slot 1: label at 30, image at 38 → image box 100mm tall → ends at 138
+        //   Slot 2: label at 148, image at 156 → image box 100mm tall → ends at 256
+        const twoSlots = (maxH) => [
+          { labelY: 30, imageY: 38 },
+          { labelY: 38 + maxH + 18, imageY: 38 + maxH + 26 },
+        ];
+
+        // 1-per-page: vertically centered-ish
+        const oneSlot = (maxH) => ({ labelY: 70, imageY: 80 });
+
+        const toReadableLabel = (val) =>
+          val
+            ? val.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/([A-Z])([A-Z][a-z])/g, "$1 $2").trim()
+            : "Document";
 
         for (const group of documentGroups) {
-          const groupDocs = client.documents.filter(doc =>
-            group.types.includes(doc.documentType)
+          const groupDocs = client.documents.filter((d) =>
+            group.types.includes(d.documentType)
           );
-
           if (groupDocs.length === 0) continue;
 
           doc.addPage();
           currentPage++;
 
+          // Page header bar
           doc.setFillColor(51, 65, 85);
           doc.rect(0, 0, 210, 24, "F");
-          doc.setFontSize(15);
+          doc.setFontSize(14);
           doc.setTextColor(255, 255, 255);
           doc.setFont("helvetica", "bold");
           doc.text(group.title, 105, 15, { align: "center" });
 
+          const slots =
+            group.perPage === 1
+              ? [oneSlot(group.maxH)]
+              : twoSlots(group.maxH);
+
           for (let i = 0; i < groupDocs.length; i++) {
-            const document = groupDocs[i];
+            const docItem = groupDocs[i];
+            const slot = slots[i] || slots[0];
+            const { labelY, imageY } = slot;
+            const imageX = pageMarginX + 2;
 
-            let titleY, imageY;
-            const imageX = cardX + 2;
-
-            if (group.perPage === 1) {
-              titleY = singleDocTitleY;
-              imageY = singleDocImageY;
-            } else {
-              titleY = titleYSlots[i];
-              imageY = titleY + 10;
-            }
-
-            doc.setFontSize(12);
+            // Document sub-label
+            doc.setFontSize(11);
             doc.setFont("helvetica", "bold");
             doc.setTextColor(30, 41, 59);
-            doc.text(toReadableDocTitle(document.documentType), cardX, titleY);
+            doc.text(toReadableLabel(docItem.documentType), pageMarginX, labelY);
 
-            if (document.imageUrl) {
-              const success = await addImageToPDF(
-                document.imageUrl,
+            // ✅ Draw fixed-size border box first
+            doc.setDrawColor(203, 213, 225);
+            doc.setLineWidth(0.8);
+            doc.rect(pageMarginX, imageY - 2, cardBorderW, group.maxH + 4);
+
+            if (docItem.imageUrl) {
+              // ✅ Image fits inside maxW × maxH, centered, aspect ratio safe
+              const result = await addImageToPDF(
+                docItem.imageUrl,
                 imageX,
                 imageY,
-                imageWidth,
-                imageHeight
+                group.maxW,
+                group.maxH
               );
 
-              if (success) {
-                doc.setDrawColor(203, 213, 225);
-                doc.setLineWidth(0.8);
-                doc.rect(cardX, imageY - 2, cardWidth, imageHeight + 4);
-              } else {
-                doc.setDrawColor(203, 213, 225);
-                doc.rect(cardX, imageY - 2, cardWidth, imageHeight + 4);
-                doc.setFontSize(10);
+              if (!result.success) {
+                doc.setFontSize(9);
                 doc.setTextColor(148, 163, 184);
                 doc.setFont("helvetica", "normal");
-                doc.text("Document unavailable", 105, imageY + 48, { align: "center" });
+                doc.text(
+                  "Document unavailable",
+                  105,
+                  imageY + group.maxH / 2,
+                  { align: "center" }
+                );
               }
             } else {
-              doc.setDrawColor(203, 213, 225);
-              doc.rect(cardX, imageY - 2, cardWidth, imageHeight + 4);
-              doc.setFontSize(10);
+              doc.setFontSize(9);
               doc.setTextColor(148, 163, 184);
               doc.setFont("helvetica", "normal");
-              doc.text("No document captured", 105, imageY + 48, { align: "center" });
+              doc.text(
+                "No document captured",
+                105,
+                imageY + group.maxH / 2,
+                { align: "center" }
+              );
             }
           }
         }
       }
 
-      // FOOTER ON EACH PAGE
+      // ─────────────────────────────────────────
+      // FOOTER — every page
+      // ─────────────────────────────────────────
       const totalPages = doc.getNumberOfPages();
       for (let i = 1; i <= totalPages; i++) {
         doc.setPage(i);
-
         doc.setDrawColor(226, 232, 240);
         doc.setLineWidth(0.5);
         doc.line(15, 285, 195, 285);
@@ -354,42 +418,28 @@ const ClientDetail = () => {
         doc.setTextColor(148, 163, 184);
         doc.setFont("helvetica", "normal");
         doc.text(
-          `Generated on ${new Date().toLocaleString('en-IN', {
-            day: '2-digit',
-            month: 'short',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
+          `Generated on ${new Date().toLocaleString("en-IN", {
+            day: "2-digit", month: "short", year: "numeric",
+            hour: "2-digit", minute: "2-digit",
           })}`,
-          105,
-          290,
-          { align: "center" }
+          105, 290, { align: "center" }
         );
-
-        doc.text(
-          `Page ${i} of ${totalPages}`,
-          195,
-          290,
-          { align: "right" }
-        );
-
+        doc.text(`Page ${i} of ${totalPages}`, 195, 290, { align: "right" });
         doc.setFontSize(7);
         doc.text(
-          `Client: ${client.clientName || 'N/A'} ${client.surname || ''}`,
-          15,
-          290
+          `Client: ${client.clientName || "N/A"} ${client.surname || ""}`,
+          15, 290
         );
       }
 
-      doc.save(`${client.clientName || 'Client'}_Complete_Form.pdf`);
-      toast.success(`📄 Complete PDF with ${client.documents?.length || 0} documents downloaded!`);
-
+      doc.save(`${client.clientName || "Client"}_Complete_Form.pdf`);
+      toast.success(`📄 PDF downloaded with ${client.documents?.length || 0} documents!`);
     } catch (error) {
       console.error("PDF Error:", error);
       toast.error("❌ PDF generation failed: " + error.message);
     }
-  };
 
+  };
   const handleEditStart = () => {
     setEditData({ ...client });
     setNewPhotoPreview(null);
@@ -422,14 +472,13 @@ const ClientDetail = () => {
     return age > 0 ? age.toString() : "";
   };
 
+  // ✅ Fixed: dob + age update in single setState call
   const handleInputChange = (field, value) => {
-    setEditData({
-      ...editData,
-      [field]: value,
-    });
-    if (field === 'dob' && value) {
+    if (field === "dob" && value) {
       const calculatedAge = calculateAgeFromDOB(value);
-      setEditData(prev => ({ ...prev, age: calculatedAge }));
+      setEditData((prev) => ({ ...prev, dob: value, age: calculatedAge }));
+    } else {
+      setEditData((prev) => ({ ...prev, [field]: value }));
     }
   };
 
@@ -554,7 +603,7 @@ const ClientDetail = () => {
       <>
         <Navbar />
         <div className="no-results">
-          <p>⏳ Loading client details...</p>
+          <p>Loading Client details...</p>
         </div>
       </>
     );
@@ -565,7 +614,7 @@ const ClientDetail = () => {
       <>
         <Navbar />
         <div className="no-results">
-          <p>❌ Client not found</p>
+          <p>Not found</p>
         </div>
       </>
     );
@@ -655,6 +704,10 @@ const ClientDetail = () => {
                         <p>{client.age || "N/A"} years</p>
                       </div>
                       <div className="info-item">
+                        <label>Country</label>
+                        <p>{client.country || "N/A"}</p>
+                      </div>
+                      <div className="info-item">
                         <label>Nationality</label>
                         <p>{client.nationality || "N/A"}</p>
                       </div>
@@ -670,14 +723,12 @@ const ClientDetail = () => {
                         <label>Occupation</label>
                         <p>{client.occupation || "N/A"}</p>
                       </div>
-                      <div className="info-item">
-                        <label>Family Members</label>
-                        <p>{client.familyMembersCount || "0"}</p>
-                      </div>
-                      <div className="info-item full-width">
-                        <label>Address</label>
-                        <p>{client.address || "N/A"}</p>
-                      </div>
+
+                      <div className="info-item"><label>Applied For</label><p>{client.appliedFor || "N/A"}</p></div>
+                      <div className="info-item"><label>Pre Work Experience</label><p>{client.preWorkExperience || "N/A"}</p></div>
+                      <div className="info-item"><label>Consular Name</label><p>{client.consularName || "N/A"}</p></div>
+                      <div className="info-item"><label>Family Members</label><p>{client.familyMembersCount || "0"}</p></div>
+                      <div className="info-item full-width"><label>Address</label><p>{client.address || "N/A"}</p></div>
                     </div>
                   </div>
 
@@ -897,6 +948,26 @@ const ClientDetail = () => {
                         onChange={(e) => handleInputChange("nationality", e.target.value)}
                       />
                     </div>
+
+
+                    {/* ✅ NEW FIELDS - EDIT */}
+                    <div className="form-group">
+                      <label>Country</label>
+                      <input type="text" value={editData.country || ""} onChange={(e) => handleInputChange("country", e.target.value)} />
+                    </div>
+                    <div className="form-group">
+                      <label>Applied For</label>
+                      <input type="text" placeholder="e.g. Malta Work Visa, Canada PR" value={editData.appliedFor || ""} onChange={(e) => handleInputChange("appliedFor", e.target.value)} />
+                    </div>
+                    <div className="form-group">
+                      <label>Pre Work Experience</label>
+                      <input type="text" placeholder="Enter previous work experience" value={editData.preWorkExperience || ""} onChange={(e) => handleInputChange("preWorkExperience", e.target.value)} />
+                    </div>
+                    <div className="form-group">
+                      <label>Consular Name</label>
+                      <input type="text" placeholder="Enter consular name" value={editData.consularName || ""} onChange={(e) => handleInputChange("consularName", e.target.value)} />
+                    </div>
+
                     <div className="form-group">
                       <label>Marital Status</label>
                       <select
