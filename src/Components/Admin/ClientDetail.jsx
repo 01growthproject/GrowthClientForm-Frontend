@@ -881,7 +881,7 @@ const ClientDetail = () => {
                     <h3 className="section-title" style={{ gridColumn: '1 / -1' }}>Basic Information</h3>
 
                     <div className="form-group">
-                      <label>Client Name</label>
+                      <label >Client Name</label>
                       <input
                         type="text"
                         value={editData.clientName || ""}
@@ -889,7 +889,7 @@ const ClientDetail = () => {
                       />
                     </div>
                     <div className="form-group">
-                      <label>Surname</label>
+                      <label className="optional">Surname</label>
                       <input
                         type="text"
                         value={editData.surname || ""}
@@ -897,7 +897,7 @@ const ClientDetail = () => {
                       />
                     </div>
                     <div className="form-group">
-                      <label>Contact</label>
+                      <label>Contact number</label>
                       <input
                         type="text"
                         value={editData.contact || ""}
@@ -905,25 +905,13 @@ const ClientDetail = () => {
                       />
                     </div>
                     <div className="form-group">
-                      <label>Email</label>
+                      <label className="optional">Email</label>
                       <input
                         type="email"
                         value={editData.email || ""}
                         onChange={(e) => handleInputChange("email", e.target.value)}
                       />
-                    </div>
-                    <div className="form-group">
-                      <label>Gender</label>
-                      <select
-                        value={editData.gender || ""}
-                        onChange={(e) => handleInputChange("gender", e.target.value)}
-                      >
-                        <option value="">Select Gender</option>
-                        <option value="Male">Male</option>
-                        <option value="Female">Female</option>
-                        <option value="Other">Other</option>
-                      </select>
-                    </div>
+                      </div>
                     <div className="form-group">
                       <label>Date of Birth</label>
                       <input
@@ -940,6 +928,19 @@ const ClientDetail = () => {
                         readOnly
                       />
                     </div>
+                  
+                    <div className="form-group">
+                      <label>Gender</label>
+                      <select
+                        value={editData.gender || ""}
+                        onChange={(e) => handleInputChange("gender", e.target.value)}
+                      >
+                        <option value="">Select Gender</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
                     <div className="form-group">
                       <label>Nationality</label>
                       <input
@@ -952,19 +953,19 @@ const ClientDetail = () => {
 
                     {/* ✅ NEW FIELDS - EDIT */}
                     <div className="form-group">
-                      <label>Country</label>
+                      <label className="optional">previous Country</label>
                       <input type="text" value={editData.country || ""} onChange={(e) => handleInputChange("country", e.target.value)} />
                     </div>
                     <div className="form-group">
-                      <label>Applied For</label>
+                      <label className="optional">Applied For</label>
                       <input type="text" placeholder="e.g. Malta Work Visa, Canada PR" value={editData.appliedFor || ""} onChange={(e) => handleInputChange("appliedFor", e.target.value)} />
                     </div>
                     <div className="form-group">
-                      <label>Pre Work Experience</label>
+                      <label className="optional">Pre Work Experience</label>
                       <input type="text" placeholder="Enter previous work experience" value={editData.preWorkExperience || ""} onChange={(e) => handleInputChange("preWorkExperience", e.target.value)} />
                     </div>
                     <div className="form-group">
-                      <label>Consular Name</label>
+                      <label className="optional">Consular Name</label>
                       <input type="text" placeholder="Enter consular name" value={editData.consularName || ""} onChange={(e) => handleInputChange("consularName", e.target.value)} />
                     </div>
 
@@ -983,7 +984,7 @@ const ClientDetail = () => {
                       </select>
                     </div>
                     <div className="form-group">
-                      <label>Education</label>
+                      <label className="optional">Education</label>
                       <input
                         type="text"
                         value={editData.education || ""}
@@ -991,7 +992,7 @@ const ClientDetail = () => {
                       />
                     </div>
                     <div className="form-group">
-                      <label>Occupation</label>
+                      <label className="optional">Occupation</label>
                       <input
                         type="text"
                         value={editData.occupation || ""}
@@ -999,7 +1000,7 @@ const ClientDetail = () => {
                       />
                     </div>
                     <div className="form-group">
-                      <label>Family Members</label>
+                      <label className="optional">Family Members</label>
                       <input
                         type="number"
                         value={editData.familyMembersCount || ""}
@@ -1007,7 +1008,7 @@ const ClientDetail = () => {
                       />
                     </div>
                     <div className="form-group full-width">
-                      <label>Address</label>
+                      <label className="optional">Address</label>
                       <textarea
                         value={editData.address || ""}
                         onChange={(e) => handleInputChange("address", e.target.value)}
@@ -1131,7 +1132,7 @@ const ClientDetail = () => {
                       />
                     </div>
                     <div className="form-group">
-                      <label>Driving License No</label>
+                      <label className="optional">Driving License No</label>
                       <input
                         type="text"
                         value={editData.drivingLicenseNo || ""}
@@ -1139,7 +1140,7 @@ const ClientDetail = () => {
                       />
                     </div>
                     <div className="form-group">
-                      <label>Voter Card No</label>
+                      <label className="optional">Voter Card No</label>
                       <input
                         type="text"
                         value={editData.voterCardNo || ""}
@@ -1159,7 +1160,7 @@ const ClientDetail = () => {
                       />
                     </div>
                     <div className="form-group">
-                      <label>Father Surname</label>
+                      <label className="optional">Father Surname</label>
                       <input
                         type="text"
                         value={editData.fatherSurname || ""}
@@ -1175,7 +1176,7 @@ const ClientDetail = () => {
                       />
                     </div>
                     <div className="form-group">
-                      <label>Father Email</label>
+                      <label className="optional">Father Email</label>
                       <input
                         type="email"
                         value={editData.fatherEmail || ""}
@@ -1194,7 +1195,7 @@ const ClientDetail = () => {
                       />
                     </div>
                     <div className="form-group">
-                      <label>Mother Surname</label>
+                      <label className="optional">Mother Surname</label>
                       <input
                         type="text"
                         value={editData.motherSurname || ""}
@@ -1202,7 +1203,7 @@ const ClientDetail = () => {
                       />
                     </div>
                     <div className="form-group">
-                      <label>Mother Phone</label>
+                      <label className="optional">Mother Phone</label>
                       <input
                         type="text"
                         value={editData.motherPhone || ""}
@@ -1210,7 +1211,7 @@ const ClientDetail = () => {
                       />
                     </div>
                     <div className="form-group">
-                      <label>Mother Email</label>
+                      <label className="optional">Mother Email</label>
                       <input
                         type="email"
                         value={editData.motherEmail || ""}
@@ -1223,7 +1224,7 @@ const ClientDetail = () => {
                         <h3 className="section-title" style={{ gridColumn: '1 / -1', marginTop: '20px' }}>Family Details - Spouse</h3>
 
                         <div className="form-group">
-                          <label>Spouse Name</label>
+                          <label className="optional">Spouse Name</label>
                           <input
                             type="text"
                             value={editData.spouseName || ""}
@@ -1231,7 +1232,7 @@ const ClientDetail = () => {
                           />
                         </div>
                         <div className="form-group">
-                          <label>Spouse Surname</label>
+                          <label className="optional">Spouse Surname</label>
                           <input
                             type="text"
                             value={editData.spouseSurname || ""}
@@ -1239,7 +1240,7 @@ const ClientDetail = () => {
                           />
                         </div>
                         <div className="form-group">
-                          <label>Spouse Phone</label>
+                          <label className="optional">Spouse Phone</label>
                           <input
                             type="text"
                             value={editData.spousePhone || ""}
@@ -1247,7 +1248,7 @@ const ClientDetail = () => {
                           />
                         </div>
                         <div className="form-group">
-                          <label>Spouse Email</label>
+                          <label className="optional">Spouse Email</label>
                           <input
                             type="email"
                             value={editData.spouseEmail || ""}
