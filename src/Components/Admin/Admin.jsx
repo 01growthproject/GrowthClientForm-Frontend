@@ -17,7 +17,7 @@ const Admin = () => {
   const [loading, setLoading] = useState(true);
   const [analytics, setAnalytics] = useState({
     total: 0,
-    today: 0clearInterval,
+    today: 0,
   });               
 
   useEffect(() => {
